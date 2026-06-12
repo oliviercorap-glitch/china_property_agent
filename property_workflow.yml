@@ -1,0 +1,39 @@
+name: Veille Immobilier Chine
+
+on:
+  schedule:
+    - cron: '0 0 * * 1-5'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  veille-property:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recuperer le code
+        uses: actions/checkout@v4
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installer les dependances
+        run: pip install requests anthropic python-dotenv
+      - name: Lancer l'agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: python china_property_agent.py
+      - name: Sauvegarder seen dans le depot
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add seen_*.json || true
+          git diff --staged --quiet || git commit -m "MAJ seen $(date +%Y-%m-%d)"
+          git push
+      - name: Sauvegarder le rapport
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-${{ github.run_number }}
+          path: rapports/
+          retention-days: 90
